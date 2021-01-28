@@ -46,6 +46,17 @@
 (defun gcal-oevent-ts-end (oevent) (plist-get oevent :ts-end))
 (defun gcal-oevent-location (oevent) (plist-get oevent :location))
 
+(defcustom gcal-org-include-parents-header-maximum 0
+  "イベントのsummaryに何階層上までのヘッダを含めるかを表します。
+`t'は全ての親階層を含めることを表します。"
+  :group 'gcal
+  :type '(choice number (const t)))
+
+(defcustom gcal-org-header-separator "/"
+  "`gcal-org-include-parents-header-maximum'が0でないときに、
+イベントのsummaryにおいてヘッダを隔てる文字列を表わします。"
+  :group 'gcal
+  :type '(choice number (const t)))
 
 ;;
 ;; Parse org-mode document
@@ -78,7 +89,19 @@
                                (match-string-no-properties 1)))
                (id         (org-id-get-create)) ;; change (point)
                (location   (org-entry-get (point) "LOCATION"))
-               (summary    (substring-no-properties (org-get-heading t t)))
+               (summary
+                (string-join
+                 (let ((path (org-get-outline-path)))
+                   (append
+                    (nthcdr
+                    (if (numberp gcal-org-include-parents-header-maximum)
+                        (max
+                         (- (length path) gcal-org-include-parents-header-maximum)
+                         0)
+                      0)
+                    path)
+                    (list (org-get-heading t t))))
+                 gcal-org-header-separator))
                (ts         (cadr (org-element-timestamp-parser)))
                (ts-end-pos (plist-get ts :end))
                (ts-start   (list
